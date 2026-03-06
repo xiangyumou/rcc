@@ -1,3 +1,5 @@
+import { TerminalManager } from './terminal.js';
+
 /**
  * Main application logic for Claude Code Web Manager
  */
@@ -57,31 +59,21 @@ class App {
     // Load initial data
     this.loadRecentProjects();
     this.loadActiveSessions();
-
-    // Setup keyboard shortcuts
-    this.setupKeyboardShortcuts();
-
-    // Render custom commands
-    this.renderCustomCommands();
   }
 
   setupEventListeners() {
-    // New project buttons - open file browser
+    // New project buttons
     this.ui.newProjectBtn.addEventListener('click', () => this.openFileBrowser());
     this.ui.welcomeNewBtn.addEventListener('click', () => this.openFileBrowser());
 
-    // File browser navigation
-    this.ui.fbGoUp.addEventListener('click', () => this.navigateUp());
-    this.ui.fbConfirm.addEventListener('click', () => this.confirmFileSelection());
-
-    // Close session
+    // Close session button
     this.ui.closeSessionBtn.addEventListener('click', () => this.closeCurrentSession());
 
-    // Settings
-    this.ui.settingsBtn.addEventListener('click', () => this.showSettingsModal());
+    // Settings button
+    this.ui.settingsBtn.addEventListener('click', () => this.openSettingsModal());
 
-    // Add custom command
-    this.ui.addCmdBtn.addEventListener('click', () => this.showAddCommandModal());
+    // Add command button
+    this.ui.addCmdBtn.addEventListener('click', () => this.openAddCommandModal());
 
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
@@ -90,303 +82,63 @@ class App {
       });
     });
 
-    // Start with options button
-    document.getElementById('start-with-options').addEventListener('click', () => {
-      this.startSessionWithOptions();
-    });
+    // File browser events
+    this.ui.fbGoUp.addEventListener('click', () => this.navigateUp());
+    this.ui.fbConfirm.addEventListener('click', () => this.confirmProjectSelection());
 
-    // Add custom command confirm
-    document.getElementById('confirm-add-cmd').addEventListener('click', () => {
-      this.addCustomCommand();
-    });
+    // Settings modal events
+    document.getElementById('start-with-options').addEventListener('click', () => this.startWithOptions());
+
+    // Custom command events
+    document.getElementById('add-custom-cmd').addEventListener('click', () => this.addCustomCommand());
+    document.getElementById('confirm-add-cmd').addEventListener('click', () => this.confirmAddCommand());
 
     // Quick command buttons
     document.querySelectorAll('.cmd-btn[data-cmd]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const cmd = e.target.dataset.cmd;
-        this.sendQuickCommand(cmd);
-      });
-    });
-
-    // Terminal state changes
-    this.terminal.onStateChange((state) => {
-      this.handleStateChange(state);
-    });
-  }
-
-  // ============== File Browser Methods ==============
-
-  async openFileBrowser() {
-    this.ui.fileBrowserModal.classList.remove('hidden');
-    this.fbSelectedPath = null;
-    this.updateFbSelectedPath();
-
-    // Load quick access directories
-    await this.loadQuickAccess();
-
-    // Try to get home directory first, fallback to /
-    try {
-      const response = await fetch('/api/fs/home');
-      const data = await response.json();
-      this.fbCurrentPath = data.path || '/';
-    } catch (error) {
-      console.error('Failed to get home directory:', error);
-      this.fbCurrentPath = '/';
-    }
-
-    await this.loadDirectory(this.fbCurrentPath);
-  }
-
-  async loadQuickAccess() {
-    try {
-      const response = await fetch('/api/fs/quick-access');
-      const dirs = await response.json();
-
-      this.ui.fbQuickAccess.innerHTML = dirs.map(dir => `
-        <button class="quick-dir-btn" data-path="${dir.path}">${dir.name}</button>
-      `).join('');
-
-      // Add click handlers
-      this.ui.fbQuickAccess.querySelectorAll('.quick-dir-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          this.loadDirectory(btn.dataset.path);
-        });
-      });
-    } catch (error) {
-      console.error('Failed to load quick access:', error);
-    }
-  }
-
-  async loadDirectory(dirPath) {
-    try {
-      this.ui.fileList.innerHTML = '<div class="loading">加载中...</div>';
-
-      const response = await fetch(`/api/fs/list?path=${encodeURIComponent(dirPath)}`);
-      const data = await response.json();
-
-      this.fbCurrentPath = data.currentPath;
-      this.ui.fbCurrentPath.textContent = data.currentPath;
-
-      // Update go up button
-      this.ui.fbGoUp.disabled = !data.parentPath;
-      this.ui.fbGoUp.onclick = () => {
-        if (data.parentPath) {
-          this.loadDirectory(data.parentPath);
+        if (this.currentSession) {
+          this.terminal.sendCommand(cmd);
         }
-      };
-
-      // Render file list
-      if (data.items.length === 0) {
-        this.ui.fileList.innerHTML = '<div class="empty-dir">空文件夹</div>';
-        return;
-      }
-
-      this.ui.fileList.innerHTML = data.items.map(item => `
-        <div class="file-item ${item.type}" data-path="${item.path}" data-type="${item.type}">
-          <span class="file-icon">${item.type === 'directory' ? '📁' : '📄'}</span>
-          <span class="file-name">${item.name}</span>
-          <span class="file-meta">${item.type === 'file' ? this.formatFileSize(item.size) : ''}</span>
-        </div>
-      `).join('');
-
-      // Add click handlers
-      this.ui.fileList.querySelectorAll('.file-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-          const path = item.dataset.path;
-          const type = item.dataset.type;
-
-          if (type === 'directory') {
-            // Double click to enter, single click to select
-            if (e.detail === 2) {
-              this.loadDirectory(path);
-            } else {
-              this.selectFileItem(item, path);
-            }
-          } else {
-            this.selectFileItem(item, path);
-          }
-        });
       });
-    } catch (error) {
-      console.error('Failed to load directory:', error);
-      this.ui.fileList.innerHTML = `<div class="loading">加载失败: ${error.message}</div>`;
-    }
-  }
-
-  selectFileItem(element, path) {
-    // Remove previous selection
-    this.ui.fileList.querySelectorAll('.file-item').forEach(item => {
-      item.classList.remove('selected');
     });
 
-    // Add selection to clicked item
-    element.classList.add('selected');
-    this.fbSelectedPath = path;
-    this.updateFbSelectedPath();
-  }
+    // Terminal state change
+    this.terminal.onStateChange((state) => {
+      this.updateStateIndicator(state);
+    });
 
-  navigateUp() {
-    // This is handled by the go up button onclick
-  }
-
-  updateFbSelectedPath() {
-    this.ui.fbSelectedPath.textContent = this.fbSelectedPath || '';
-    this.ui.fbConfirm.disabled = !this.fbSelectedPath;
-  }
-
-  confirmFileSelection() {
-    if (!this.fbSelectedPath) return;
-
-    this.pendingProjectPath = this.fbSelectedPath;
-    this.ui.fileBrowserModal.classList.add('hidden');
-    this.showSettingsModal();
-  }
-
-  formatFileSize(bytes) {
-    if (bytes === undefined) return '';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  }
-
-  // ============== Settings and Session Methods ==============
-
-  showSettingsModal() {
-    this.ui.settingsModal.classList.remove('hidden');
-    this.renderCustomCommandsList();
-  }
-
-  showAddCommandModal() {
-    this.ui.addCmdModal.classList.remove('hidden');
-    document.getElementById('quick-cmd-input').focus();
-  }
-
-  getSelectedOptions() {
-    const options = [];
-    if (document.getElementById('opt-resume').checked) {
-      options.push('-r');
-    }
-    if (document.getElementById('opt-verbose').checked) {
-      options.push('--verbose');
-    }
-    if (document.getElementById('opt-debug').checked) {
-      options.push('--debug');
-    }
-    return options;
-  }
-
-  async startSessionWithOptions() {
-    if (!this.pendingProjectPath) {
-      this.ui.settingsModal.classList.add('hidden');
-      return;
-    }
-
-    const options = this.getSelectedOptions();
-
-    try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectPath: this.pendingProjectPath,
-          claudeOptions: options
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create session');
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Ctrl+D to exit
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        if (this.currentSession) {
+          this.terminal.sendCommand('/exit');
+        }
       }
 
-      const data = await response.json();
-      this.connectToSession(data.session);
-
-      this.pendingProjectPath = null;
-      this.ui.settingsModal.classList.add('hidden');
-
-      // Clear checkboxes
-      document.querySelectorAll('#settings-modal input[type="checkbox"]').forEach(cb => {
-        cb.checked = false;
-      });
-
-    } catch (error) {
-      console.error('Failed to start session:', error);
-      alert('Failed to start session. Please try again.');
-    }
-  }
-
-  async connectToSession(session) {
-    this.currentSession = session;
-
-    // Update UI
-    this.ui.welcomeScreen.classList.add('hidden');
-    this.ui.terminalContainer.classList.remove('hidden');
-    this.ui.currentProject.textContent = session.projectName;
-    this.ui.connectionStatus.className = 'status connected';
-    this.ui.connectionStatus.title = '已连接';
-
-    // Update sidebar selection
-    this.updateSidebarSelection(session.id);
-
-    // Connect terminal
-    this.terminal.connect(session.id);
-
-    // Update status
-    this.ui.statusText.textContent = `会话: ${session.projectName}`;
-    this.ui.sessionInfo.textContent = new Date().toLocaleTimeString();
-
-    // Refresh active sessions
-    this.loadActiveSessions();
-  }
-
-  async reconnectToSession(sessionId) {
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}/reconnect`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reconnect');
+      // Ctrl+L to clear
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault();
+        if (this.currentSession) {
+          this.terminal.sendCommand('/clear');
+        }
       }
 
-      const data = await response.json();
-      this.connectToSession(data.session);
-    } catch (error) {
-      console.error('Failed to reconnect:', error);
-      alert('Failed to reconnect to session. It may have been terminated.');
-      this.loadActiveSessions();
-    }
-  }
-
-  closeCurrentSession() {
-    if (!this.currentSession) return;
-
-    if (confirm('确定要关闭当前会话吗？')) {
-      fetch(`/api/sessions/${this.currentSession.id}`, {
-        method: 'DELETE'
-      }).then(() => {
-        this.terminal.disconnect();
-        this.currentSession = null;
-        this.showWelcomeScreen();
-        this.loadActiveSessions();
-      });
-    }
-  }
-
-  showWelcomeScreen() {
-    this.ui.welcomeScreen.classList.remove('hidden');
-    this.ui.terminalContainer.classList.add('hidden');
-    this.ui.currentProject.textContent = '-';
-    this.ui.connectionStatus.className = 'status disconnected';
-    this.ui.connectionStatus.title = '未连接';
-    this.ui.statusText.textContent = '就绪';
-    this.updateSidebarSelection(null);
+      // Shift+Tab to switch projects
+      if (e.shiftKey && e.key === 'Tab') {
+        e.preventDefault();
+        this.switchToNextProject();
+      }
+    });
   }
 
   async loadRecentProjects() {
     try {
       const response = await fetch('/api/recent-projects');
       this.recentProjects = await response.json();
-      this.renderRecentProjects();
+      this.renderProjectList();
     } catch (error) {
       console.error('Failed to load recent projects:', error);
     }
@@ -396,73 +148,311 @@ class App {
     try {
       const response = await fetch('/api/sessions');
       this.activeSessions = await response.json();
-      this.renderActiveSessions();
+      this.renderSessionList();
     } catch (error) {
       console.error('Failed to load active sessions:', error);
     }
   }
 
-  renderRecentProjects() {
-    if (this.recentProjects.length === 0) {
-      this.ui.projectList.innerHTML = '<li class="empty-message">没有最近项目</li>';
-      return;
-    }
-
+  renderProjectList() {
     this.ui.projectList.innerHTML = this.recentProjects.map(project => `
-      <li data-path="${project.path}">
-        <span class="icon">📁</span>
-        <span class="name">${project.name}</span>
-        <span class="remove" title="从列表移除">×</span>
+      <li class="project-item" data-path="${project.path}">
+        <span class="project-name">${project.name}</span>
+        <span class="project-path">${project.path}</span>
+        <button class="btn btn-small remove-project" data-path="${project.path}">×</button>
       </li>
     `).join('');
 
     // Add click handlers
-    this.ui.projectList.querySelectorAll('li').forEach(li => {
-      li.addEventListener('click', (e) => {
-        if (e.target.classList.contains('remove')) {
-          e.stopPropagation();
-          this.removeRecentProject(li.dataset.path);
-        } else {
-          this.pendingProjectPath = li.dataset.path;
-          this.showSettingsModal();
+    this.ui.projectList.querySelectorAll('.project-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('remove-project')) {
+          const path = item.dataset.path;
+          this.openProject(path);
         }
+      });
+    });
+
+    // Add remove handlers
+    this.ui.projectList.querySelectorAll('.remove-project').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const path = btn.dataset.path;
+        this.removeRecentProject(path);
       });
     });
   }
 
-  renderActiveSessions() {
-    const runningSessions = this.activeSessions.filter(s => s.status === 'running');
+  renderSessionList() {
+    this.ui.sessionList.innerHTML = this.activeSessions.map(session => `
+      <li class="session-item ${session.status === 'running' ? 'active' : ''}" data-id="${session.id}">
+        <span class="session-name">${session.projectName}</span>
+        <span class="session-status">${session.status}</span>
+      </li>
+    `).join('');
 
-    if (runningSessions.length === 0) {
-      this.ui.sessionList.innerHTML = '<li class="empty-message">没有活动会话</li>';
-      return;
+    // Add click handlers
+    this.ui.sessionList.querySelectorAll('.session-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const sessionId = item.dataset.id;
+        this.connectToSession(sessionId);
+      });
+    });
+  }
+
+  async openFileBrowser() {
+    this.ui.fileBrowserModal.classList.remove('hidden');
+    await this.loadDirectory('/');
+    await this.loadQuickAccess();
+  }
+
+  async loadDirectory(path) {
+    try {
+      const response = await fetch(`/api/fs/list?path=${encodeURIComponent(path)}`);
+      const data = await response.json();
+
+      this.fbCurrentPath = data.currentPath;
+      this.ui.fbCurrentPath.textContent = data.currentPath;
+
+      this.renderFileList(data.items);
+    } catch (error) {
+      console.error('Failed to load directory:', error);
     }
+  }
 
-    this.ui.sessionList.innerHTML = runningSessions.map(session => `
-      <li data-id="${session.id}" class="${session.id === this.currentSession?.id ? 'active' : ''}">
-        <span class="icon">🖥️</span>
-        <span class="name">${session.projectName}</span>
-      </li>
+  renderFileList(items) {
+    this.ui.fileList.innerHTML = items.map(item => `
+      <div class="file-item ${item.type}" data-path="${item.path}" data-type="${item.type}">
+        <span class="file-icon">${item.type === 'directory' ? '' : ''}</span>
+        <span class="file-name">${item.name}</span>
+        ${item.size ? `<span class="file-size">${this.formatSize(item.size)}</span>` : ''}
+      </div>
     `).join('');
 
     // Add click handlers
-    this.ui.sessionList.querySelectorAll('li').forEach(li => {
-      li.addEventListener('click', () => {
-        const sessionId = li.dataset.id;
-        if (sessionId !== this.currentSession?.id) {
-          if (this.currentSession) {
-            this.terminal.disconnect();
-          }
-          this.reconnectToSession(sessionId);
+    this.ui.fileList.querySelectorAll('.file-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const path = item.dataset.path;
+        const type = item.dataset.type;
+
+        if (type === 'directory') {
+          this.loadDirectory(path);
+        } else {
+          this.fbSelectedPath = path;
+          this.ui.fbSelectedPath.textContent = path;
+          this.ui.fbConfirm.disabled = true;
+        }
+      });
+
+      // Double-click to select directory
+      item.addEventListener('dblclick', () => {
+        const path = item.dataset.path;
+        const type = item.dataset.type;
+
+        if (type === 'directory') {
+          this.fbSelectedPath = path;
+          this.ui.fbSelectedPath.textContent = path;
+          this.ui.fbConfirm.disabled = false;
         }
       });
     });
   }
 
-  updateSidebarSelection(sessionId) {
-    document.querySelectorAll('#session-list li').forEach(li => {
-      li.classList.toggle('active', li.dataset.id === sessionId);
+  async loadQuickAccess() {
+    try {
+      const response = await fetch('/api/fs/quick-access');
+      const dirs = await response.json();
+
+      this.ui.fbQuickAccess.innerHTML = dirs.map(dir => `
+        <button class="quick-access-item" data-path="${dir.path}">${dir.name}</button>
+      `).join('');
+
+      this.ui.fbQuickAccess.querySelectorAll('.quick-access-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.loadDirectory(btn.dataset.path);
+        });
+      });
+    } catch (error) {
+      console.error('Failed to load quick access:', error);
+    }
+  }
+
+  navigateUp() {
+    const parent = this.fbCurrentPath.split('/').slice(0, -1).join('/') || '/';
+    this.loadDirectory(parent);
+  }
+
+  confirmProjectSelection() {
+    if (this.fbSelectedPath) {
+      this.ui.fileBrowserModal.classList.add('hidden');
+      this.pendingProjectPath = this.fbSelectedPath;
+      this.openSettingsModal();
+    }
+  }
+
+  openSettingsModal() {
+    this.ui.settingsModal.classList.remove('hidden');
+    this.renderCustomCommands();
+  }
+
+  openAddCommandModal() {
+    this.ui.addCmdModal.classList.remove('hidden');
+  }
+
+  renderCustomCommands() {
+    this.ui.customCommandsList.innerHTML = this.customCommands.map((cmd, index) => `
+      <div class="custom-command-item">
+        <span>${cmd.label}</span>
+        <button class="btn btn-small remove-cmd" data-index="${index}">删除</button>
+      </div>
+    `).join('');
+
+    this.ui.customCommandsList.querySelectorAll('.remove-cmd').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.dataset.index);
+        this.customCommands.splice(index, 1);
+        this.saveCustomCommands();
+        this.renderCustomCommands();
+      });
     });
+  }
+
+  addCustomCommand() {
+    const nameInput = document.getElementById('new-cmd-name');
+    const valueInput = document.getElementById('new-cmd-value');
+
+    const label = nameInput.value.trim();
+    const text = valueInput.value.trim();
+
+    if (label && text) {
+      this.customCommands.push({ label, text });
+      this.saveCustomCommands();
+      nameInput.value = '';
+      valueInput.value = '';
+      this.renderCustomCommands();
+    }
+  }
+
+  confirmAddCommand() {
+    const input = document.getElementById('quick-cmd-input');
+    const text = input.value.trim();
+
+    if (text) {
+      this.customCommands.push({
+        label: text,
+        text: text + '\r'
+      });
+      this.saveCustomCommands();
+      input.value = '';
+      this.ui.addCmdModal.classList.add('hidden');
+    }
+  }
+
+  loadCustomCommands() {
+    const stored = localStorage.getItem('customCommands');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  saveCustomCommands() {
+    localStorage.setItem('customCommands', JSON.stringify(this.customCommands));
+  }
+
+  async startWithOptions() {
+    const options = [];
+    if (document.getElementById('opt-resume').checked) options.push('-r');
+    if (document.getElementById('opt-verbose').checked) options.push('--verbose');
+    if (document.getElementById('opt-debug').checked) options.push('--debug');
+
+    this.ui.settingsModal.classList.add('hidden');
+
+    if (this.pendingProjectPath) {
+      await this.createSession(this.pendingProjectPath, options);
+      this.pendingProjectPath = null;
+    }
+  }
+
+  async createSession(projectPath, options = []) {
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectPath, claudeOptions: options })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session');
+      }
+
+      const data = await response.json();
+      this.currentSession = data.session;
+
+      // Update UI
+      this.showTerminal();
+      this.ui.currentProject.textContent = this.currentSession.projectName;
+      this.updateConnectionStatus(true);
+
+      // Connect to session
+      this.terminal.connect(this.currentSession.id);
+      this.terminal.focus();
+
+      // Update session list
+      this.loadActiveSessions();
+
+      // Add to recent projects
+      this.addRecentProject(projectPath);
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      alert('Failed to create session: ' + error.message);
+    }
+  }
+
+  async connectToSession(sessionId) {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/reconnect`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reconnect to session');
+      }
+
+      const data = await response.json();
+      this.currentSession = data.session;
+
+      // Update UI
+      this.showTerminal();
+      this.ui.currentProject.textContent = this.currentSession.projectName;
+      this.updateConnectionStatus(true);
+
+      // Connect to session
+      this.terminal.connect(this.currentSession.id);
+      this.terminal.focus();
+    } catch (error) {
+      console.error('Failed to reconnect:', error);
+      alert('Failed to reconnect to session');
+    }
+  }
+
+  async closeCurrentSession() {
+    if (!this.currentSession) return;
+
+    try {
+      await fetch(`/api/sessions/${this.currentSession.id}`, {
+        method: 'DELETE'
+      });
+
+      this.terminal.disconnect();
+      this.currentSession = null;
+      this.showWelcome();
+      this.loadActiveSessions();
+    } catch (error) {
+      console.error('Failed to close session:', error);
+    }
+  }
+
+  async openProject(path) {
+    this.pendingProjectPath = path;
+    this.openSettingsModal();
   }
 
   async removeRecentProject(path) {
@@ -476,171 +466,86 @@ class App {
     }
   }
 
-  sendQuickCommand(cmd) {
-    if (!this.currentSession) {
-      alert('请先启动一个会话');
-      return;
+  async addRecentProject(path) {
+    try {
+      await fetch('/api/recent-projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      this.loadRecentProjects();
+    } catch (error) {
+      console.error('Failed to add recent project:', error);
     }
-    this.terminal.sendCommand(cmd);
-    this.terminal.focus();
   }
 
-  handleStateChange(state) {
+  showTerminal() {
+    this.ui.welcomeScreen.classList.add('hidden');
+    this.ui.terminalContainer.classList.remove('hidden');
+  }
+
+  showWelcome() {
+    this.ui.welcomeScreen.classList.remove('hidden');
+    this.ui.terminalContainer.classList.add('hidden');
+    this.ui.currentProject.textContent = '-';
+    this.updateConnectionStatus(false);
+  }
+
+  updateConnectionStatus(connected) {
+    this.ui.connectionStatus.classList.toggle('connected', connected);
+    this.ui.connectionStatus.classList.toggle('disconnected', !connected);
+    this.ui.statusText.textContent = connected ? '已连接' : '就绪';
+  }
+
+  updateStateIndicator(state) {
     const indicator = this.ui.stateIndicator;
     const icon = indicator.querySelector('.state-icon');
     const text = indicator.querySelector('.state-text');
 
-    indicator.className = 'state-indicator';
-
     switch (state.type) {
       case 'PERMISSION_PROMPT':
-        indicator.classList.add('waiting');
         icon.textContent = '⚠️';
-        text.textContent = '需要权限确认 (y/n)';
+        text.textContent = '等待确认 (y/n)';
         break;
-
       case 'CHOICE_PROMPT':
-        indicator.classList.add('waiting');
         icon.textContent = '🔢';
-        text.textContent = '请选择选项';
+        text.textContent = '选择选项';
         break;
-
       case 'PLAN_MODE':
-        indicator.classList.add('active');
-        icon.textContent = '📝';
-        text.textContent = '计划模式已激活';
+        icon.textContent = '';
+        text.textContent = '计划模式';
         break;
-
       case 'TOOL_EXECUTION':
         icon.textContent = '⚙️';
-        text.textContent = '正在执行工具...';
+        text.textContent = '执行中...';
         break;
-
       case 'SESSION_END':
-        icon.textContent = '🛑';
-        text.textContent = '会话已结束';
+        icon.textContent = '';
+        text.textContent = '会话结束';
         break;
-
       case 'USER_INPUT':
-        indicator.classList.add('active');
-        icon.textContent = '✓';
-        text.textContent = '准备就绪';
+        icon.textContent = '✏️';
+        text.textContent = '等待输入';
         break;
-
       default:
         icon.textContent = '⏳';
-        text.textContent = '处理中...';
+        text.textContent = '准备就绪';
     }
   }
 
-  focusSidebar() {
-    const firstProject = this.ui.projectList.querySelector('li:not(.empty-message)');
-    if (firstProject) {
-      firstProject.focus();
-    }
+  switchToNextProject() {
+    // Implementation for project switching
+    console.log('Switch to next project');
   }
 
-  setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-      if (e.shiftKey && e.key === 'Tab') {
-        e.preventDefault();
-        this.focusSidebar();
-      }
-
-      if (e.ctrlKey && e.key === 'd') {
-        e.preventDefault();
-        this.closeCurrentSession();
-      }
-
-      if (e.ctrlKey && e.key === 'l') {
-        this.terminal.focus();
-      }
-
-      if (e.key === 'Escape') {
-        document.querySelectorAll('.modal').forEach(modal => {
-          modal.classList.add('hidden');
-        });
-      }
-    });
-  }
-
-  // Custom commands management
-  loadCustomCommands() {
-    try {
-      const saved = localStorage.getItem('ccwm-custom-commands');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  saveCustomCommands() {
-    localStorage.setItem('ccwm-custom-commands', JSON.stringify(this.customCommands));
-  }
-
-  renderCustomCommands() {
-    const container = document.querySelector('.quick-commands');
-    const addBtn = document.getElementById('add-cmd-btn');
-
-    container.querySelectorAll('.cmd-btn-custom').forEach(btn => btn.remove());
-
-    this.customCommands.forEach(cmd => {
-      const btn = document.createElement('button');
-      btn.className = 'cmd-btn cmd-btn-custom';
-      btn.textContent = cmd;
-      btn.dataset.cmd = cmd;
-      btn.addEventListener('click', () => this.sendQuickCommand(cmd));
-      container.insertBefore(btn, addBtn);
-    });
-  }
-
-  renderCustomCommandsList() {
-    this.ui.customCommandsList.innerHTML = this.customCommands.map(cmd => `
-      <div class="custom-cmd-item">
-        <span>${cmd}</span>
-        <span class="remove-cmd" data-cmd="${cmd}">×</span>
-      </div>
-    `).join('');
-
-    this.ui.customCommandsList.querySelectorAll('.remove-cmd').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const cmd = e.target.dataset.cmd;
-        this.customCommands = this.customCommands.filter(c => c !== cmd);
-        this.saveCustomCommands();
-        this.renderCustomCommandsList();
-        this.renderCustomCommands();
-      });
-    });
-  }
-
-  addCustomCommand() {
-    const nameInput = document.getElementById('new-cmd-name');
-    const valueInput = document.getElementById('new-cmd-value');
-
-    const name = nameInput.value.trim();
-    const value = valueInput.value.trim();
-
-    if (!name) return;
-
-    const cmd = value || name;
-    if (!this.customCommands.includes(cmd)) {
-      this.customCommands.push(cmd);
-      this.saveCustomCommands();
-      this.renderCustomCommands();
-
-      nameInput.value = '';
-      valueInput.value = '';
-
-      if (!this.ui.settingsModal.classList.contains('hidden')) {
-        this.renderCustomCommandsList();
-      }
-    }
-
-    this.ui.addCmdModal.classList.add('hidden');
+  formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 }
 
-// Initialize app when DOM is ready
+// Initialize app
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new App();
 });

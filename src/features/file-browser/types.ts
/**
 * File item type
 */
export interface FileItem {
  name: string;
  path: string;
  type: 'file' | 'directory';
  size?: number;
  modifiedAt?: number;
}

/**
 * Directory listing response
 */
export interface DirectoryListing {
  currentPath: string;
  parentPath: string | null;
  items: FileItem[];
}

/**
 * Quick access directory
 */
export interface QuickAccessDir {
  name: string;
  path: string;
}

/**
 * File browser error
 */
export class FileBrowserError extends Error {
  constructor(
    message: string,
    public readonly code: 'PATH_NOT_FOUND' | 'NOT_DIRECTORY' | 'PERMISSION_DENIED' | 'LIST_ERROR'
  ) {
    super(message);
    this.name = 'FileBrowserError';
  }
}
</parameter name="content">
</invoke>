@@ -1,0 +1,40 @@
+/**
+ * File item type
+ */
+export interface FileItem {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+  modifiedAt?: number;
+}
+
+/**
+ * Directory listing response
+ */
+export interface DirectoryListing {
+  currentPath: string;
+  parentPath: string | null;
+  items: FileItem[];
+}
+
+/**
+ * Quick access directory
+ */
+export interface QuickAccessDir {
+  name: string;
+  path: string;
+}
+
+/**
+ * File browser error
+ */
+export class FileBrowserError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'PATH_NOT_FOUND' | 'NOT_DIRECTORY' | 'PERMISSION_DENIED' | 'LIST_ERROR'
+  ) {
+    super(message);
+    this.name = 'FileBrowserError';
+  }
+}

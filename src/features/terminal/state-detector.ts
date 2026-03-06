@@ -1,7 +1,7 @@
-import { STATE_PATTERNS, DetectedState } from '../shared/types';
+import { STATE_PATTERNS, DetectedState, TerminalState } from './types';
 
 /**
- * Detect the current state of Claude Code based on terminal output
+ * Detect the current terminal state based on output
  */
 export function detectState(output: string): DetectedState {
   // Check each pattern in order of priority

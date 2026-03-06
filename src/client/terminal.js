@@ -206,7 +206,5 @@ class TerminalManager {
   }
 }
 
-// Export for use in app.js
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { TerminalManager };
-}
+// Export for ES modules
+export { TerminalManager };
