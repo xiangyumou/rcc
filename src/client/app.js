@@ -33,7 +33,6 @@ class App {
       closeSessionBtn: document.getElementById('close-session-btn'),
       settingsModal: document.getElementById('settings-modal'),
       addCmdModal: document.getElementById('add-cmd-modal'),
-      addCmdBtn: document.getElementById('add-cmd-btn'),
       customCommandsList: document.getElementById('custom-commands-list'),
       // File browser elements
       fileBrowserModal: document.getElementById('file-browser-modal'),
@@ -72,9 +71,6 @@ class App {
     // Close session button
     this.ui.closeSessionBtn.addEventListener('click', () => this.closeCurrentSession());
 
-    // Add command button
-    this.ui.addCmdBtn.addEventListener('click', () => this.openAddCommandModal());
-
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -103,7 +99,6 @@ class App {
 
     // Custom command events
     document.getElementById('add-custom-cmd').addEventListener('click', () => this.addCustomCommand());
-    document.getElementById('confirm-add-cmd').addEventListener('click', () => this.confirmAddCommand());
 
     // Quick command buttons
     document.querySelectorAll('.cmd-btn[data-cmd]').forEach(btn => {
@@ -354,10 +349,6 @@ class App {
     this.renderCustomCommands();
   }
 
-  openAddCommandModal() {
-    this.ui.addCmdModal.classList.remove('hidden');
-  }
-
   renderCustomCommands() {
     if (this.customCommands.length === 0) {
       this.ui.customCommandsList.innerHTML = '<span class="text-muted text-sm">暂无自定义命令</span>';
@@ -394,21 +385,6 @@ class App {
       nameInput.value = '';
       valueInput.value = '';
       this.renderCustomCommands();
-    }
-  }
-
-  confirmAddCommand() {
-    const input = document.getElementById('quick-cmd-input');
-    const text = input.value.trim();
-
-    if (text) {
-      this.customCommands.push({
-        label: text,
-        text: text + '\r'
-      });
-      this.saveCustomCommands();
-      input.value = '';
-      this.ui.addCmdModal.classList.add('hidden');
     }
   }
 
@@ -571,7 +547,6 @@ class App {
       this.ui.connectionStatus.classList.add('status-dot-disconnected');
       this.ui.connectionStatus.setAttribute('aria-label', '未连接');
     }
-    this.ui.statusText.textContent = connected ? '已连接' : '就绪';
   }
 
   updateStateIndicator(state) {
@@ -579,34 +554,41 @@ class App {
     const icon = indicator.querySelector('.state-icon');
     const text = indicator.querySelector('.state-text');
 
+    let iconName = 'clock';
+
     switch (state.type) {
       case 'PERMISSION_PROMPT':
-        icon.textContent = '⚠️';
+        iconName = 'alert-triangle';
         text.textContent = '等待确认 (y/n)';
         break;
       case 'CHOICE_PROMPT':
-        icon.textContent = '🔢';
+        iconName = 'list';
         text.textContent = '选择选项';
         break;
       case 'PLAN_MODE':
-        icon.textContent = '';
+        iconName = 'map';
         text.textContent = '计划模式';
         break;
       case 'TOOL_EXECUTION':
-        icon.textContent = '⚙️';
+        iconName = 'settings';
         text.textContent = '执行中...';
         break;
       case 'SESSION_END':
-        icon.textContent = '';
+        iconName = 'square';
         text.textContent = '会话结束';
         break;
       case 'USER_INPUT':
-        icon.textContent = '✏️';
+        iconName = 'pencil';
         text.textContent = '等待输入';
         break;
       default:
-        icon.textContent = '⏳';
+        iconName = 'clock';
         text.textContent = '准备就绪';
+    }
+
+    icon.setAttribute('data-lucide', iconName);
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
     }
   }
 

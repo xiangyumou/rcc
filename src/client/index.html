@@ -96,36 +96,22 @@
           <div class="toolbar-left">
             <span id="current-project" class="toolbar-title">-</span>
             <span id="connection-status" class="status-dot status-dot-disconnected" aria-label="未连接"></span>
+            <div id="state-indicator" class="state-indicator">
+              <i data-lucide="clock" class="state-icon" aria-hidden="true"></i>
+              <span class="state-text">准备就绪</span>
+            </div>
           </div>
           <div class="toolbar-right">
             <div class="quick-commands">
               <button class="cmd-btn" data-cmd="/clear">/clear</button>
-              <button class="cmd-btn" data-cmd="/help">/help</button>
               <button class="cmd-btn" data-cmd="/compact">/compact</button>
-              <button class="cmd-btn" data-cmd="/cost">/cost</button>
-              <button id="add-cmd-btn" class="cmd-btn cmd-btn-primary">+</button>
             </div>
-            <a href="settings.html" class="btn btn-ghost btn-icon" aria-label="设置" title="设置">
-              <i data-lucide="settings"></i>
-            </a>
             <button id="close-session-btn" class="btn btn-destructive btn-sm">关闭</button>
           </div>
         </div>
 
         <!-- Terminal -->
         <div id="terminal" class="terminal"></div>
-
-        <!-- State Indicator -->
-        <div id="state-indicator" class="state-indicator">
-          <span class="state-icon" aria-hidden="true">⏳</span>
-          <span class="state-text">准备就绪</span>
-        </div>
-
-        <!-- Status Bar -->
-        <div class="status-bar">
-          <span id="status-text">就绪</span>
-          <span id="session-info"></span>
-        </div>
       </div>
     </main>
   </div>

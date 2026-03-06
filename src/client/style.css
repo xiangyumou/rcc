@@ -675,45 +675,26 @@
 .state-indicator {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  gap: var(--space-xs);
   font-size: var(--text-xs);
   color: var(--muted);
 }
 
+.state-indicator .state-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .state-indicator.active {
-  background: var(--primary-a10);
   color: var(--primary);
 }
 
 .state-indicator.waiting {
-  background: var(--warning-a10);
   color: var(--warning);
 }
 
 .state-indicator.error {
-  background: var(--danger-a10);
   color: var(--danger);
-}
-
-/* Status Bar */
-
-.status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-xs) var(--space-md);
-  background: var(--primary);
-  color: white;
-  font-size: var(--text-xs);
-}
-
-.status-bar-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
 }
 
 /* Status dot */
