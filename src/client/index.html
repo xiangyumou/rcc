@@ -4,26 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Claude Code Web Manager</title>
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- XTerm CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <!-- App Styles -->
+  <link rel="stylesheet" href="globals.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="dark">
   <div id="app">
     <!-- Sidebar: Recent Projects -->
-    <aside id="sidebar">
+    <aside id="sidebar" class="sidebar">
       <div class="sidebar-header">
-        <h1>Claude Code Manager</h1>
-        <button id="new-project-btn" class="btn btn-primary">+ 打开新文件夹</button>
+        <h1 class="sidebar-title">Claude Code Manager</h1>
+        <button id="new-project-btn" class="btn btn-block">
+          <span>+</span>
+          <span>打开新文件夹</span>
+        </button>
       </div>
 
-      <div class="recent-projects">
-        <h2>最近项目</h2>
-        <ul id="project-list"></ul>
+      <div class="sidebar-section">
+        <h2 class="sidebar-section-title">最近项目</h2>
+        <ul id="project-list" class="list"></ul>
+        <div id="project-list-empty" class="sidebar-empty hidden">暂无项目</div>
       </div>
 
-      <div class="active-sessions">
-        <h2>活动会话</h2>
-        <ul id="session-list"></ul>
+      <div class="sidebar-section">
+        <h2 class="sidebar-section-title">活动会话</h2>
+        <ul id="session-list" class="list"></ul>
+        <div id="session-list-empty" class="sidebar-empty hidden">暂无活动会话</div>
       </div>
     </aside>
 
@@ -32,17 +44,23 @@
       <!-- Welcome Screen -->
       <div id="welcome-screen" class="welcome-screen">
         <div class="welcome-content">
-          <h1>欢迎使用 Claude Code Web Manager</h1>
-          <p>选择一个项目开始，或打开新文件夹</p>
+          <h1 class="welcome-title">欢迎使用 Claude Code Web Manager</h1>
+          <p class="welcome-description">选择一个项目开始，或打开新文件夹</p>
           <div class="welcome-actions">
-            <button id="welcome-new-btn" class="btn btn-large btn-primary">打开文件夹</button>
+            <button id="welcome-new-btn" class="btn btn-lg">打开文件夹</button>
           </div>
           <div class="quick-help">
-            <h3>快捷键</h3>
-            <ul>
-              <li><kbd>Shift</kbd> + <kbd>Tab</kbd> - 切换项目</li>
-              <li><kbd>Ctrl</kbd> + <kbd>D</kbd> - 退出当前会话</li>
-              <li><kbd>Ctrl</kbd> + <kbd>L</kbd> - 清屏</li>
+            <h3 class="quick-help-title">快捷键</h3>
+            <ul class="quick-help-list">
+              <li class="quick-help-item">
+                <kbd>Shift</kbd> + <kbd>Tab</kbd> - 切换项目
+              </li>
+              <li class="quick-help-item">
+                <kbd>Ctrl</kbd> + <kbd>D</kbd> - 退出当前会话
+              </li>
+              <li class="quick-help-item">
+                <kbd>Ctrl</kbd> + <kbd>L</kbd> - 清屏
+              </li>
             </ul>
           </div>
         </div>
@@ -53,8 +71,8 @@
         <!-- Toolbar -->
         <div class="toolbar">
           <div class="toolbar-left">
-            <span id="current-project" class="project-name">-</span>
-            <span id="connection-status" class="status disconnected">●</span>
+            <span id="current-project" class="toolbar-title">-</span>
+            <span id="connection-status" class="status-dot status-dot-disconnected" aria-label="未连接"></span>
           </div>
           <div class="toolbar-right">
             <div class="quick-commands">
@@ -62,10 +80,10 @@
               <button class="cmd-btn" data-cmd="/help">/help</button>
               <button class="cmd-btn" data-cmd="/compact">/compact</button>
               <button class="cmd-btn" data-cmd="/cost">/cost</button>
-              <button id="add-cmd-btn" class="cmd-btn cmd-btn-add">+</button>
+              <button id="add-cmd-btn" class="cmd-btn cmd-btn-primary">+</button>
             </div>
-            <button id="settings-btn" class="btn btn-icon">⚙️</button>
-            <button id="close-session-btn" class="btn btn-danger">关闭</button>
+            <button id="settings-btn" class="btn btn-ghost btn-icon" aria-label="设置">⚙️</button>
+            <button id="close-session-btn" class="btn btn-destructive btn-sm">关闭</button>
           </div>
         </div>
 
@@ -74,7 +92,7 @@
 
         <!-- State Indicator -->
         <div id="state-indicator" class="state-indicator">
-          <span class="state-icon">⏳</span>
+          <span class="state-icon" aria-hidden="true">⏳</span>
           <span class="state-text">准备就绪</span>
         </div>
 
@@ -88,100 +106,102 @@
   </div>
 
   <!-- Settings Modal -->
-  <div id="settings-modal" class="modal hidden">
-    <div class="modal-content">
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal">
       <div class="modal-header">
         <h2>启动选项</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label>
-            <input type="checkbox" id="opt-resume" value="-r">
-            恢复上次对话 (-r)
+            <input type="checkbox" id="opt-resume" class="checkbox" value="-r">
+            <span>恢复上次对话 (-r)</span>
           </label>
         </div>
         <div class="form-group">
           <label>
-            <input type="checkbox" id="opt-verbose" value="--verbose">
-            详细模式 (--verbose)
+            <input type="checkbox" id="opt-verbose" class="checkbox" value="--verbose">
+            <span>详细模式 (--verbose)</span>
           </label>
         </div>
         <div class="form-group">
           <label>
-            <input type="checkbox" id="opt-debug" value="--debug">
-            调试模式 (--debug)
+            <input type="checkbox" id="opt-debug" class="checkbox" value="--debug">
+            <span>调试模式 (--debug)</span>
           </label>
         </div>
         <div class="form-group">
           <label>自定义快捷命令:</label>
-          <div id="custom-commands-list"></div>
-          <div class="add-command-row">
-            <input type="text" id="new-cmd-name" placeholder="命令名 (如 /test)">
-            <input type="text" id="new-cmd-value" placeholder="完整命令">
-            <button id="add-custom-cmd" class="btn btn-small">添加</button>
+          <div id="custom-commands-list" class="mt-sm"></div>
+          <div class="flex gap-sm mt-sm">
+            <input type="text" id="new-cmd-name" class="input" placeholder="命令名 (如 /test)">
+            <input type="text" id="new-cmd-value" class="input" placeholder="完整命令">
+            <button id="add-custom-cmd" class="btn btn-secondary btn-sm">添加</button>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button id="start-with-options" class="btn btn-primary">启动</button>
+        <button id="start-with-options" class="btn">启动</button>
         <button class="btn btn-secondary modal-close">取消</button>
       </div>
     </div>
   </div>
 
   <!-- File Browser Modal -->
-  <div id="file-browser-modal" class="modal hidden">
-    <div class="modal-content modal-large">
+  <div id="file-browser-modal" class="modal-overlay hidden">
+    <div class="modal modal-lg">
       <div class="modal-header">
         <h2>选择项目文件夹</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="关闭">&times;</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="padding: 0;">
         <div class="file-browser">
           <div class="file-browser-header">
-            <button id="fb-go-up" class="btn btn-small">↑ 上级</button>
-            <span id="fb-current-path" class="current-path">/</span>
+            <button id="fb-go-up" class="btn btn-secondary btn-sm">↑ 上级</button>
+            <span id="fb-current-path" class="file-browser-path">/</span>
           </div>
-          <div class="quick-access">
-            <span class="quick-label">快速访问:</span>
+          <div class="file-browser-quick-access">
+            <span class="quick-access-label">快速访问:</span>
             <div id="fb-quick-access" class="quick-access-list"></div>
           </div>
           <div id="file-list" class="file-list">
-            <div class="loading">加载中...</div>
+            <div class="file-list-loading">加载中...</div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <span id="fb-selected-path" class="selected-path"></span>
-        <button id="fb-confirm" class="btn btn-primary" disabled>选择此文件夹</button>
+        <button id="fb-confirm" class="btn" disabled>选择此文件夹</button>
         <button class="btn btn-secondary modal-close">取消</button>
       </div>
     </div>
   </div>
 
   <!-- Add Custom Command Modal -->
-  <div id="add-cmd-modal" class="modal hidden">
-    <div class="modal-content modal-small">
+  <div id="add-cmd-modal" class="modal-overlay hidden">
+    <div class="modal modal-sm">
       <div class="modal-header">
         <h2>添加快捷命令</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label>命令:</label>
-          <input type="text" id="quick-cmd-input" placeholder="例如: /test">
+          <input type="text" id="quick-cmd-input" class="input" placeholder="例如: /test">
         </div>
       </div>
       <div class="modal-footer">
-        <button id="confirm-add-cmd" class="btn btn-primary">添加</button>
+        <button id="confirm-add-cmd" class="btn">添加</button>
         <button class="btn btn-secondary modal-close">取消</button>
       </div>
     </div>
   </div>
 
+  <!-- XTerm Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <!-- App Scripts -->
   <script type="module" src="main.js"></script>
 </body>
 </html>

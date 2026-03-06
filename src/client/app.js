@@ -78,7 +78,19 @@ class App {
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        e.target.closest('.modal').classList.add('hidden');
+        const modal = e.target.closest('.modal-overlay');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+      });
+    });
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.add('hidden');
+        }
       });
     });
 
@@ -155,18 +167,27 @@ class App {
   }
 
   renderProjectList() {
+    if (this.recentProjects.length === 0) {
+      this.ui.projectList.innerHTML = '';
+      document.getElementById('project-list-empty').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('project-list-empty').classList.add('hidden');
+
     this.ui.projectList.innerHTML = this.recentProjects.map(project => `
-      <li class="project-item" data-path="${project.path}">
-        <span class="project-name">${project.name}</span>
-        <span class="project-path">${project.path}</span>
-        <button class="btn btn-small remove-project" data-path="${project.path}">×</button>
+      <li class="list-item" data-path="${project.path}">
+        <span class="list-item-content">
+          <span class="list-item-title">${project.name}</span>
+          <span class="list-item-subtitle">${project.path}</span>
+        </span>
+        <button class="btn btn-ghost btn-icon-sm remove-project list-item-action" data-path="${project.path}" aria-label="删除">×</button>
       </li>
     `).join('');
 
     // Add click handlers
-    this.ui.projectList.querySelectorAll('.project-item').forEach(item => {
+    this.ui.projectList.querySelectorAll('.list-item').forEach(item => {
       item.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('remove-project')) {
+        if (!e.target.closest('.remove-project')) {
           const path = item.dataset.path;
           this.openProject(path);
         }
@@ -184,15 +205,24 @@ class App {
   }
 
   renderSessionList() {
+    if (this.activeSessions.length === 0) {
+      this.ui.sessionList.innerHTML = '';
+      document.getElementById('session-list-empty').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('session-list-empty').classList.add('hidden');
+
     this.ui.sessionList.innerHTML = this.activeSessions.map(session => `
-      <li class="session-item ${session.status === 'running' ? 'active' : ''}" data-id="${session.id}">
-        <span class="session-name">${session.projectName}</span>
-        <span class="session-status">${session.status}</span>
+      <li class="list-item ${session.status === 'running' ? 'active' : ''}" data-id="${session.id}">
+        <span class="list-item-content">
+          <span class="list-item-title">${session.projectName}</span>
+          <span class="list-item-subtitle">${session.status}</span>
+        </span>
       </li>
     `).join('');
 
     // Add click handlers
-    this.ui.sessionList.querySelectorAll('.session-item').forEach(item => {
+    this.ui.sessionList.querySelectorAll('.list-item').forEach(item => {
       item.addEventListener('click', () => {
         const sessionId = item.dataset.id;
         this.connectToSession(sessionId);
@@ -223,9 +253,9 @@ class App {
   renderFileList(items) {
     this.ui.fileList.innerHTML = items.map(item => `
       <div class="file-item ${item.type}" data-path="${item.path}" data-type="${item.type}">
-        <span class="file-icon">${item.type === 'directory' ? '' : ''}</span>
-        <span class="file-name">${item.name}</span>
-        ${item.size ? `<span class="file-size">${this.formatSize(item.size)}</span>` : ''}
+        <span class="file-item-icon">${item.type === 'directory' ? '' : ''}</span>
+        <span class="file-item-name">${item.name}</span>
+        ${item.size ? `<span class="file-item-meta">${this.formatSize(item.size)}</span>` : ''}
       </div>
     `).join('');
 
@@ -264,10 +294,10 @@ class App {
       const dirs = await response.json();
 
       this.ui.fbQuickAccess.innerHTML = dirs.map(dir => `
-        <button class="quick-access-item" data-path="${dir.path}">${dir.name}</button>
+        <button class="quick-access-btn" data-path="${dir.path}">${dir.name}</button>
       `).join('');
 
-      this.ui.fbQuickAccess.querySelectorAll('.quick-access-item').forEach(btn => {
+      this.ui.fbQuickAccess.querySelectorAll('.quick-access-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           this.loadDirectory(btn.dataset.path);
         });
@@ -300,10 +330,15 @@ class App {
   }
 
   renderCustomCommands() {
+    if (this.customCommands.length === 0) {
+      this.ui.customCommandsList.innerHTML = '<span class="text-muted text-sm">暂无自定义命令</span>';
+      return;
+    }
+
     this.ui.customCommandsList.innerHTML = this.customCommands.map((cmd, index) => `
-      <div class="custom-command-item">
-        <span>${cmd.label}</span>
-        <button class="btn btn-small remove-cmd" data-index="${index}">删除</button>
+      <div class="flex justify-between items-center p-sm mb-sm" style="background: var(--surface2); border-radius: var(--radius-md);">
+        <span class="text-sm">${cmd.label}</span>
+        <button class="btn btn-destructive btn-sm remove-cmd" data-index="${index}">删除</button>
       </div>
     `).join('');
 
@@ -492,8 +527,15 @@ class App {
   }
 
   updateConnectionStatus(connected) {
-    this.ui.connectionStatus.classList.toggle('connected', connected);
-    this.ui.connectionStatus.classList.toggle('disconnected', !connected);
+    if (connected) {
+      this.ui.connectionStatus.classList.remove('status-dot-disconnected');
+      this.ui.connectionStatus.classList.add('status-dot-connected');
+      this.ui.connectionStatus.setAttribute('aria-label', '已连接');
+    } else {
+      this.ui.connectionStatus.classList.remove('status-dot-connected');
+      this.ui.connectionStatus.classList.add('status-dot-disconnected');
+      this.ui.connectionStatus.setAttribute('aria-label', '未连接');
+    }
     this.ui.statusText.textContent = connected ? '已连接' : '就绪';
   }
 
