@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
-import { Session, SessionWithPTY, SessionStatus, SessionError, SessionManagerConfig } from './types';
+import { Session, SessionWithPTY, SessionWithState, SessionError, SessionManagerConfig } from './types';
 import { StorageAdapter, JSONStorageAdapter } from '../../core/storage';
 import { PTYAdapter, NodePTYFactory } from '../../core/pty';
 
@@ -40,7 +40,6 @@ export class SessionManager {
       projectPath,
       projectName,
       claudeOptions,
-      status: 'running' as SessionStatus,
       createdAt: Date.now(),
       lastActiveAt: Date.now()
     };
@@ -69,62 +68,42 @@ export class SessionManager {
   }
 
   /**
-   * Get session by ID
+   * Get session by ID (only returns in-memory/running sessions)
    */
   async getSession(sessionId: string): Promise<SessionWithPTY | null> {
-    // Check memory first
-    const inMemory = this.sessions.get(sessionId);
-    if (inMemory) {
-      return inMemory;
-    }
-
-    // Try to load from storage
-    const session = await this.storage.read(sessionId);
-    if (!session || session.status === 'stopped') {
-      return null;
-    }
-
-    // Mark as stopped (can't reattach to process)
-    session.status = 'stopped';
-    await this.storage.write(sessionId, session);
-    return null;
+    // Only return in-memory sessions (running)
+    return this.sessions.get(sessionId) || null;
   }
 
   /**
-   * Reconnect to existing session
+   * Reconnect to existing session (returns in-memory session if exists)
    */
   async reconnectSession(sessionId: string): Promise<SessionWithPTY | null> {
-    const session = await this.storage.read(sessionId);
-    if (!session) {
-      return null;
-    }
-
-    // Check if already connected
+    // Return in-memory session if exists
     const existing = this.sessions.get(sessionId);
     if (existing && existing.pty.isRunning()) {
       existing.session.lastActiveAt = Date.now();
       return existing;
     }
 
-    // If session stopped or no PTY, create new
-    if (session.status === 'stopped' || !existing) {
-      const pty = this.createPTY(sessionId, session.projectPath, session.claudeOptions);
-
-      session.status = 'running';
-      session.lastActiveAt = Date.now();
-
-      const sessionWithPTY: SessionWithPTY = { session, pty };
-      this.sessions.set(sessionId, sessionWithPTY);
-
-      await this.storage.write(sessionId, session);
-
-      this.setupPTYHandlers(sessionWithPTY);
-      pty.start();
-
-      return sessionWithPTY;
+    // Try to load from storage and restart
+    const session = await this.storage.read(sessionId);
+    if (!session) {
+      return null;
     }
 
-    return existing;
+    const pty = this.createPTY(sessionId, session.projectPath, session.claudeOptions);
+    session.lastActiveAt = Date.now();
+
+    const sessionWithPTY: SessionWithPTY = { session, pty };
+    this.sessions.set(sessionId, sessionWithPTY);
+
+    await this.storage.write(sessionId, session);
+
+    this.setupPTYHandlers(sessionWithPTY);
+    pty.start();
+
+    return sessionWithPTY;
   }
 
   /**
@@ -135,46 +114,40 @@ export class SessionManager {
 
     if (sessionWithPTY) {
       sessionWithPTY.pty.kill('SIGTERM');
-      sessionWithPTY.session.status = 'stopped';
-      await this.storage.write(sessionId, sessionWithPTY.session);
       this.sessions.delete(sessionId);
       return true;
-    }
-
-    // Update storage even if not in memory
-    const session = await this.storage.read(sessionId);
-    if (session) {
-      session.status = 'stopped';
-      await this.storage.write(sessionId, session);
     }
 
     return false;
   }
 
   /**
-   * Get all active (in-memory) sessions
+   * Get all active (in-memory) sessions with their current state
    */
-  getActiveSessions(): Session[] {
+  getActiveSessions(): SessionWithState[] {
     return Array.from(this.sessions.values())
       .filter(s => s.pty.isRunning())
-      .map(s => s.session);
+      .map(s => ({
+        ...s.session,
+        state: s.currentState
+      }));
   }
 
   /**
-   * Get all sessions from storage
+   * Get all active sessions (in-memory only, no storage)
    */
-  async getAllSessions(): Promise<Session[]> {
-    const keys = await this.storage.list();
-    const sessions: Session[] = [];
+  async getAllSessions(): Promise<SessionWithState[]> {
+    return this.getActiveSessions();
+  }
 
-    for (const key of keys) {
-      const session = await this.storage.read(key);
-      if (session) {
-        sessions.push(session);
-      }
+  /**
+   * Update session state
+   */
+  updateSessionState(sessionId: string, state: string): void {
+    const sessionWithPTY = this.sessions.get(sessionId);
+    if (sessionWithPTY) {
+      sessionWithPTY.currentState = state;
     }
-
-    return sessions.sort((a, b) => b.lastActiveAt - a.lastActiveAt);
   }
 
   /**
@@ -216,9 +189,8 @@ export class SessionManager {
   private setupPTYHandlers(sessionWithPTY: SessionWithPTY): void {
     const { session, pty } = sessionWithPTY;
 
-    pty.on('exit', async () => {
-      session.status = 'stopped';
-      await this.storage.write(session.id, session);
+    pty.on('exit', () => {
+      // Remove from memory, no need to write status to storage
       this.sessions.delete(session.id);
     });
   }

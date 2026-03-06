@@ -113,6 +113,11 @@ class App {
     // Terminal state change
     this.terminal.onStateChange((state) => {
       this.updateStateIndicator(state);
+
+      // Update session state in sidebar if we have a current session
+      if (this.currentSession) {
+        this.updateSessionState(this.currentSession.id, state.type);
+      }
     });
 
     // Keyboard shortcuts
@@ -221,14 +226,20 @@ class App {
     }
     document.getElementById('session-list-empty').classList.add('hidden');
 
-    this.ui.sessionList.innerHTML = this.activeSessions.map(session => `
-      <li class="list-item ${session.status === 'running' ? 'active' : ''}" data-id="${session.id}">
+    this.ui.sessionList.innerHTML = this.activeSessions.map(session => {
+      const stateText = this.getStateDisplayText(session.state);
+      const stateIcon = this.getStateIcon(session.state);
+      return `
+      <li class="list-item active" data-id="${session.id}">
         <span class="list-item-content">
           <span class="list-item-title">${session.projectName}</span>
-          <span class="list-item-subtitle">${session.status}</span>
+          <span class="list-item-subtitle flex items-center gap-sm">
+            <span data-lucide="${stateIcon}" class="icon-sm"></span>
+            ${stateText}
+          </span>
         </span>
       </li>
-    `).join('');
+    `}).join('');
 
     // Add click handlers
     this.ui.sessionList.querySelectorAll('.list-item').forEach(item => {
@@ -237,6 +248,59 @@ class App {
         this.connectToSession(sessionId);
       });
     });
+
+    // Refresh icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  getStateDisplayText(state) {
+    switch (state) {
+      case 'PERMISSION_PROMPT':
+        return '等待确认';
+      case 'CHOICE_PROMPT':
+        return '选择选项';
+      case 'PLAN_MODE':
+        return '计划模式';
+      case 'TOOL_EXECUTION':
+        return '执行中...';
+      case 'SESSION_END':
+        return '会话结束';
+      case 'USER_INPUT':
+        return '等待输入';
+      case 'normal':
+      default:
+        return '准备就绪';
+    }
+  }
+
+  getStateIcon(state) {
+    switch (state) {
+      case 'PERMISSION_PROMPT':
+        return 'alert-triangle';
+      case 'CHOICE_PROMPT':
+        return 'list';
+      case 'PLAN_MODE':
+        return 'map';
+      case 'TOOL_EXECUTION':
+        return 'settings';
+      case 'SESSION_END':
+        return 'square';
+      case 'USER_INPUT':
+        return 'pencil';
+      case 'normal':
+      default:
+        return 'clock';
+    }
+  }
+
+  updateSessionState(sessionId, state) {
+    const session = this.activeSessions.find(s => s.id === sessionId);
+    if (session && session.state !== state) {
+      session.state = state;
+      this.renderSessionList();
+    }
   }
 
   async openFileBrowser() {
@@ -261,6 +325,11 @@ class App {
       this.ui.fbCurrentPath.textContent = data.currentPath;
 
       this.renderFileList(data.items);
+
+      // 进入目录后，自动将当前目录设为可选中的路径
+      this.fbSelectedPath = this.fbCurrentPath;
+      this.ui.fbSelectedPath.textContent = this.fbCurrentPath;
+      this.ui.fbConfirm.disabled = false;
     } catch (error) {
       console.error('Failed to load directory:', error);
       this.ui.fileList.innerHTML = '<div class="error-message p-md text-center">加载目录失败</div>';

@@ -88,6 +88,9 @@ export function createSessionFeature(): {
 
       // Handle PTY state changes
       const onStateChange = (state: { type: string }) => {
+        // Update session state in manager
+        manager.updateSessionState(sessionId, state.type);
+
         const msg: ServerWSMessage = {
           type: 'state',
           state: { type: state.type, match: null }

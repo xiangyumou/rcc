@@ -6,16 +6,22 @@ import { PTYAdapter } from '../../core/pty';
 export type SessionStatus = 'running' | 'paused' | 'stopped';
 
 /**
- * Session data
+ * Session data (stored in JSON, no status field)
  */
 export interface Session {
   id: string;
   projectPath: string;
   projectName: string;
   claudeOptions: string[];
-  status: SessionStatus;
   createdAt: number;
   lastActiveAt: number;
+}
+
+/**
+ * Session with runtime state (for API responses)
+ */
+export interface SessionWithState extends Session {
+  state?: string;
 }
 
 /**
@@ -24,6 +30,7 @@ export interface Session {
 export interface SessionWithPTY {
   session: Session;
   pty: PTYAdapter;
+  currentState?: string;
 }
 
 /**
@@ -43,9 +50,9 @@ export interface CreateSessionResponse {
 }
 
 /**
- * Session list item
+ * Session list item (API response)
  */
-export interface SessionListItem extends Session {
+export interface SessionListItem extends SessionWithState {
   isConnected: boolean;
 }
 
