@@ -149,7 +149,14 @@ class App {
   async loadRecentProjects() {
     try {
       const response = await fetch('/api/recent-projects');
-      this.recentProjects = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load recent projects');
+      }
+      this.recentProjects = result.data || [];
       this.renderProjectList();
     } catch (error) {
       console.error('Failed to load recent projects:', error);
@@ -159,7 +166,14 @@ class App {
   async loadActiveSessions() {
     try {
       const response = await fetch('/api/sessions');
-      this.activeSessions = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load active sessions');
+      }
+      this.activeSessions = result.data || [];
       this.renderSessionList();
     } catch (error) {
       console.error('Failed to load active sessions:', error);
@@ -239,7 +253,14 @@ class App {
   async loadDirectory(path) {
     try {
       const response = await fetch(`/api/fs/list?path=${encodeURIComponent(path)}`);
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load directory');
+      }
+      const data = result.data || { currentPath: path, items: [] };
 
       this.fbCurrentPath = data.currentPath;
       this.ui.fbCurrentPath.textContent = data.currentPath;
@@ -247,6 +268,7 @@ class App {
       this.renderFileList(data.items);
     } catch (error) {
       console.error('Failed to load directory:', error);
+      this.ui.fileList.innerHTML = '<div class="error-message p-md text-center">加载目录失败</div>';
     }
   }
 
@@ -291,7 +313,14 @@ class App {
   async loadQuickAccess() {
     try {
       const response = await fetch('/api/fs/quick-access');
-      const dirs = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load quick access');
+      }
+      const dirs = result.data || [];
 
       this.ui.fbQuickAccess.innerHTML = dirs.map(dir => `
         <button class="quick-access-btn" data-path="${dir.path}">${dir.name}</button>
@@ -418,8 +447,11 @@ class App {
         throw new Error('Failed to create session');
       }
 
-      const data = await response.json();
-      this.currentSession = data.session;
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create session');
+      }
+      this.currentSession = result.data?.session;
 
       // Update UI
       this.showTerminal();
@@ -451,8 +483,11 @@ class App {
         throw new Error('Failed to reconnect to session');
       }
 
-      const data = await response.json();
-      this.currentSession = data.session;
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to reconnect to session');
+      }
+      this.currentSession = result.data?.session;
 
       // Update UI
       this.showTerminal();
@@ -591,3 +626,8 @@ class App {
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new App();
 });
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { App };
+}
