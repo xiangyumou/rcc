@@ -1,4 +1,5 @@
 import { TerminalManager } from './terminal.js';
+import { themeManager } from './theme.js';
 
 /**
  * Main application logic for Claude Code Web Manager
@@ -30,7 +31,6 @@ class App {
       statusText: document.getElementById('status-text'),
       sessionInfo: document.getElementById('session-info'),
       closeSessionBtn: document.getElementById('close-session-btn'),
-      settingsBtn: document.getElementById('settings-btn'),
       settingsModal: document.getElementById('settings-modal'),
       addCmdModal: document.getElementById('add-cmd-modal'),
       addCmdBtn: document.getElementById('add-cmd-btn'),
@@ -49,6 +49,9 @@ class App {
   }
 
   init() {
+    // Initialize theme before DOM is fully rendered to prevent flash
+    themeManager.init();
+
     // Initialize terminal
     this.terminal = new TerminalManager('terminal');
     this.terminal.init();
@@ -68,9 +71,6 @@ class App {
 
     // Close session button
     this.ui.closeSessionBtn.addEventListener('click', () => this.closeCurrentSession());
-
-    // Settings button
-    this.ui.settingsBtn.addEventListener('click', () => this.openSettingsModal());
 
     // Add command button
     this.ui.addCmdBtn.addEventListener('click', () => this.openAddCommandModal());

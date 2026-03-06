@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 - Claude Code Web Manager</title>
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <!-- App Styles -->
+  <link rel="stylesheet" href="globals.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="settings.css">
+
+  <!-- Prevent FOUC for theme -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('theme-preference');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.addEventListener('DOMContentLoaded', function() {
+          document.body.classList.add('dark');
+        });
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app" class="settings-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar settings-sidebar">
+      <div class="sidebar-header">
+        <a href="index.html" class="back-link">
+          <i data-lucide="arrow-left" class="back-icon"></i>
+          <span>返回</span>
+        </a>
+        <h1 class="sidebar-title">设置</h1>
+      </div>
+
+      <nav class="settings-nav">
+        <a href="#appearance" class="nav-item active" data-section="appearance">
+          <i data-lucide="palette" class="nav-icon"></i>
+          <span>外观</span>
+        </a>
+        <a href="#shortcuts" class="nav-item" data-section="shortcuts">
+          <i data-lucide="keyboard" class="nav-icon"></i>
+          <span>快捷键</span>
+        </a>
+        <a href="#commands" class="nav-item" data-section="commands">
+          <i data-lucide="zap" class="nav-icon"></i>
+          <span>快捷命令</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="settings-content">
+      <!-- Appearance Section -->
+      <section id="appearance" class="settings-section active">
+        <div class="section-header">
+          <h2 class="section-title">外观</h2>
+          <p class="section-description">自定义界面主题和显示选项</p>
+        </div>
+
+        <!-- Theme Card -->
+        <div class="setting-card">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <div class="setting-icon-wrapper">
+                <i data-lucide="monitor" class="setting-icon"></i>
+              </div>
+              <div class="setting-text">
+                <h3 class="setting-title">主题</h3>
+                <p class="setting-description">选择适合你的界面主题</p>
+              </div>
+            </div>
+            <div class="setting-control">
+              <div class="theme-toggle-group" role="radiogroup" aria-label="选择主题">
+                <button class="theme-btn" data-theme="auto" aria-label="自动">
+                  <i data-lucide="monitor" class="theme-btn-icon"></i>
+                </button>
+                <button class="theme-btn" data-theme="light" aria-label="浅色">
+                  <i data-lucide="sun" class="theme-btn-icon"></i>
+                </button>
+                <button class="theme-btn" data-theme="dark" aria-label="深色">
+                  <i data-lucide="moon" class="theme-btn-icon"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Shortcuts Section -->
+      <section id="shortcuts" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">快捷键</h2>
+          <p class="section-description">自定义键盘快捷键</p>
+        </div>
+
+        <!-- Default Shortcuts Card -->
+        <div class="setting-card">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <div class="setting-icon-wrapper">
+                <i data-lucide="keyboard" class="setting-icon"></i>
+              </div>
+              <div class="setting-text">
+                <h3 class="setting-title">默认快捷键</h3>
+                <p class="setting-description">系统预定义的快捷键</p>
+              </div>
+            </div>
+          </div>
+          <div class="shortcuts-list" id="default-shortcuts-list">
+            <!-- Default shortcuts rendered here -->
+          </div>
+        </div>
+
+        <!-- Custom Shortcuts Card -->
+        <div class="setting-card">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <div class="setting-icon-wrapper">
+                <i data-lucide="plus-circle" class="setting-icon"></i>
+              </div>
+              <div class="setting-text">
+                <h3 class="setting-title">自定义快捷键</h3>
+                <p class="setting-description">为命令添加键盘快捷键</p>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="add-shortcut-btn">
+              <i data-lucide="plus" class="btn-icon"></i>
+              添加
+            </button>
+          </div>
+          <div class="shortcuts-list" id="custom-shortcuts-list">
+            <!-- Custom shortcuts rendered here -->
+          </div>
+        </div>
+
+        <!-- Add Shortcut Form (hidden by default) -->
+        <div class="setting-card hidden" id="shortcut-form-card">
+          <div class="setting-row">
+            <div class="setting-text">
+              <h3 class="setting-title">添加快捷键</h3>
+            </div>
+          </div>
+          <div class="form-stack">
+            <select class="input" id="shortcut-action">
+              <option value="">选择命令...</option>
+            </select>
+            <div class="shortcut-input-group">
+              <input type="text" class="input shortcut-input" id="shortcut-keys" placeholder="点击并按快捷键组合" readonly>
+              <button class="btn btn-ghost btn-sm" id="clear-shortcut-input" type="button">
+                <i data-lucide="x" class="btn-icon"></i>
+              </button>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-secondary btn-sm" id="cancel-shortcut" type="button">取消</button>
+              <button class="btn btn-primary btn-sm" id="save-shortcut" type="button">保存</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Commands Section -->
+      <section id="commands" class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">快捷命令</h2>
+          <p class="section-description">管理工具栏上的快捷命令</p>
+        </div>
+
+        <!-- Default Commands Card -->
+        <div class="setting-card">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <div class="setting-icon-wrapper">
+                <i data-lucide="terminal" class="setting-icon"></i>
+              </div>
+              <div class="setting-text">
+                <h3 class="setting-title">默认命令</h3>
+                <p class="setting-description">系统预定义的快捷命令</p>
+              </div>
+            </div>
+          </div>
+          <div class="commands-list" id="default-commands-list">
+            <!-- Default commands rendered here -->
+          </div>
+        </div>
+
+        <!-- Custom Commands Card -->
+        <div class="setting-card">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <div class="setting-icon-wrapper">
+                <i data-lucide="plus-circle" class="setting-icon"></i>
+              </div>
+              <div class="setting-text">
+                <h3 class="setting-title">自定义命令</h3>
+                <p class="setting-description">添加新的快捷命令到工具栏</p>
+              </div>
+            </div>
+          </div>
+          <div class="command-form-row">
+            <input type="text" class="input" id="cmd-label" placeholder="显示名称">
+            <input type="text" class="input" id="cmd-value" placeholder="命令内容">
+            <button class="btn btn-primary" id="add-cmd-btn">
+              <i data-lucide="plus" class="btn-icon"></i>
+            </button>
+          </div>
+          <div class="commands-list mt-md" id="custom-commands-list">
+            <!-- Custom commands rendered here -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="settings.js"></script>
+  <script>
+    // Initialize Lucide icons
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

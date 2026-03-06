@@ -10,11 +10,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- XTerm CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <!-- App Styles -->
   <link rel="stylesheet" href="globals.css">
   <link rel="stylesheet" href="style.css">
+
+  <!-- Prevent FOUC (Flash of Unstyled Content) for theme -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('theme-preference');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.addEventListener('DOMContentLoaded', function() {
+          document.body.classList.add('dark');
+        });
+      }
+    })();
+  </script>
 </head>
-<body class="dark">
+<body>
   <div id="app">
     <!-- Sidebar: Recent Projects -->
     <aside id="sidebar" class="sidebar">
@@ -36,6 +51,14 @@
         <h2 class="sidebar-section-title">活动会话</h2>
         <ul id="session-list" class="list"></ul>
         <div id="session-list-empty" class="sidebar-empty hidden">暂无活动会话</div>
+      </div>
+
+      <!-- Settings Link -->
+      <div class="sidebar-footer">
+        <a href="settings.html" class="btn btn-ghost btn-sm btn-block settings-link" aria-label="设置">
+          <i data-lucide="settings" class="settings-icon"></i>
+          <span>设置</span>
+        </a>
       </div>
     </aside>
 
@@ -82,7 +105,9 @@
               <button class="cmd-btn" data-cmd="/cost">/cost</button>
               <button id="add-cmd-btn" class="cmd-btn cmd-btn-primary">+</button>
             </div>
-            <button id="settings-btn" class="btn btn-ghost btn-icon" aria-label="设置">⚙️</button>
+            <a href="settings.html" class="btn btn-ghost btn-icon" aria-label="设置" title="设置">
+              <i data-lucide="settings"></i>
+            </a>
             <button id="close-session-btn" class="btn btn-destructive btn-sm">关闭</button>
           </div>
         </div>
@@ -203,5 +228,13 @@
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
   <!-- App Scripts -->
   <script type="module" src="main.js"></script>
+  <!-- Initialize Lucide Icons -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    });
+  </script>
 </body>
 </html>

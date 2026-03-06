@@ -327,7 +327,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -451,6 +451,27 @@
   letter-spacing: 0.05em;
   margin-bottom: var(--space-sm);
   padding-left: var(--space-sm);
+}
+
+/* Sidebar Footer - Settings Link */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border);
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  text-decoration: none;
+}
+
+.settings-link svg,
+.settings-icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* Sidebar List Item */
